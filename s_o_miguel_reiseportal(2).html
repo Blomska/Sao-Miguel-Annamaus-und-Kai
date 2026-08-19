@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>São Miguel 2026 – Reise- & Packguide für Annamaus & Kai</title>
+    <!-- Chosen Palette: Azores Ocean & Forest Premium - Background #f8faf6, Azores Dark Forest #0d2818, Ocean Teal #028090, Emerald #16a34a, Terracotta #c85a32, Warm Sand #f3f4ee, Card Border #e2e8f0 -->
+    <!-- Application Structure Plan: Dedicated homepage (Startseite) featuring an uncluttered, high-impact layout focused on live August weather/microclimate, key trip metrics, basecamp logistics, and quick-action shortcuts. Daily stages (Tages-Etappen) are separated into their own dedicated tab with full card/timeline views, category filters, and search capabilities. Other dedicated tabs remain for packing, analytics, spot finder, and tips/webcams. -->
+    <!-- Visualization & Content Choices: 1. Startseite Weather Widget -> Goal: Immediate weather clarity -> Dynamic JS switcher for 5 microclimate zones with live SpotAzores recommendations -> Vanilla JS. 2. Startseite Basecamp & Quick Stats -> Goal: Glanceable logistics -> Grid cards with drive times and key trip facts -> HTML/Tailwind. 3. Daily Itinerary Tab -> Goal: Detailed day-by-day exploration -> Filterable Grid/Timeline with search & category buttons -> Vanilla JS. 4. Hike Distance & Activity Mix -> Goal: Visual breakdown of trip effort -> Chart.js Canvas. 5. Hand Luggage Packing List -> Goal: Interactive packing with localStorage persistence -> Vanilla JS. CONFIRMATION: NO SVG used, NO Mermaid JS used. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        azores: {
+                            bg: '#f8faf6',
+                            card: '#ffffff',
+                            dark: '#0d2818',
+                            darklight: '#163a24',
+                            emerald: '#16a34a',
+                            ocean: '#028090',
+                            oceanlight: '#e0f2fe',
+                            terracotta: '#c85a32',
+                            sand: '#f3f4ee',
+                            border: '#e2e8f0'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8faf6;
+            color: #1e293b;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 380px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 340px;
+            }
+        }
+        .tab-btn.active {
+            background-color: #0d2818;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(13, 40, 24, 0.15);
+        }
+        .filter-btn.active {
+            background-color: #028090;
+            color: #ffffff;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #16a34a;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-emerald-100 selection:text-emerald-900">
+
+    <!-- Header Navigation -->
+    <header class="bg-azores-dark text-white sticky top-0 z-50 shadow-md backdrop-blur-md bg-opacity-95 border-b border-emerald-900/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl animate-pulse">🌋</span>
+                        <h1 class="text-lg md:text-xl font-bold tracking-tight text-emerald-400 flex items-center gap-2">
+                            São Miguel 2026 <span class="text-xs bg-emerald-900/90 text-emerald-200 px-2.5 py-0.5 rounded-full border border-emerald-500/30 font-normal">Annamaus & Kai 💚</span>
+                        </h1>
+                    </div>
+                    <p class="text-xs text-gray-300 mt-0.5">22.08. – 29.08. • Basecamp: Fajã de Cima • Handgepäck Roadtrip</p>
+                </div>
+                <button id="mobileMenuToggle" class="md:hidden text-2xl p-1.5 rounded-lg bg-emerald-900/60 focus:outline-none text-emerald-300" aria-label="Menü öffnen">
+                    ☰
+                </button>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav id="navContainer" class="hidden md:flex flex-wrap gap-1.5 w-full md:w-auto text-xs md:text-sm">
+                <button onclick="switchTab('home')" id="tab-home" class="tab-btn active px-3.5 py-2 rounded-xl border border-emerald-800/80 hover:bg-emerald-900 transition font-medium flex items-center gap-1.5">
+                    <span>🏠</span> Startseite
+                </button>
+                <button onclick="switchTab('itinerary')" id="tab-itinerary" class="tab-btn px-3.5 py-2 rounded-xl border border-emerald-800/80 hover:bg-emerald-900 transition font-medium flex items-center gap-1.5">
+                    <span>🗓️</span> Tages-Etappen
+                </button>
+                <button onclick="switchTab('packing')" id="tab-packing" class="tab-btn px-3.5 py-2 rounded-xl border border-emerald-800/80 hover:bg-emerald-900 transition font-medium flex items-center gap-1.5">
+                    <span>🎒</span> Packliste <span id="packBadge" class="bg-emerald-500 text-xs px-2 py-0.5 rounded-full text-white font-bold ml-1">0%</span>
+                </button>
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn px-3.5 py-2 rounded-xl border border-emerald-800/80 hover:bg-emerald-900 transition font-medium flex items-center gap-1.5">
+                    <span>📊</span> Aktivitäten & Grafik
+                </button>
+                <button onclick="switchTab('spots')" id="tab-spots" class="tab-btn px-3.5 py-2 rounded-xl border border-emerald-800/80 hover:bg-emerald-900 transition font-medium flex items-center gap-1.5">
+                    <span>📍</span> Spot-Finder
+                </button>
+                <button onclick="switchTab('tips')" id="tab-tips" class="tab-btn px-3.5 py-2 rounded-xl border border-emerald-800/80 hover:bg-emerald-900 transition font-medium flex items-center gap-1.5">
+                    <span>💡</span> Insider-Tipps & Cams
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ================= TAB 1: STARTSEITE (HOME) ================= -->
+        <section id="sec-home" class="tab-content block space-y-6">
+
+            <!-- Welcome Banner -->
+            <div class="bg-white rounded-2xl shadow-sm border border-azores-border p-5 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
+                            🌴 Azoren Sommer 2026
+                        </span>
+                        <span class="text-xs text-slate-500 font-medium">8-Tage Roadtrip</span>
+                    </div>
+                    <h2 class="text-xl md:text-2xl font-bold text-azores-dark">
+                        Willkommen auf São Miguel, Annamaus & Kai! 👋
+                    </h2>
+                    <p class="text-xs md:text-sm text-slate-600 mt-1 max-w-2xl">
+                        Euer zentrales Reiseportal für die Azoren. Alle Wetterdaten, Tagestouren, Packlisten und Insider-Tipps auf einen Blick vereint.
+                    </p>
+                </div>
+                <div class="flex flex-wrap md:flex-col gap-2 shrink-0">
+                    <button onclick="switchTab('itinerary')" class="bg-azores-dark hover:bg-azores-darklight text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-2">
+                        <span>🗓️</span> Zu den Tages-Etappen →
+                    </button>
+                    <button onclick="switchTab('packing')" class="bg-azores-sand hover:bg-slate-200 text-azores-dark text-xs font-bold px-4 py-2 rounded-xl border border-azores-border transition flex items-center gap-2">
+                        <span>🎒</span> Packliste prüfen
+                    </button>
+                </div>
+            </div>
+
+            <!-- STARTPAGE WEATHER & MICROCLIMATE WIDGET -->
+            <div class="bg-gradient-to-br from-azores-dark via-azores-darklight to-slate-900 text-white rounded-2xl p-5 md:p-6 shadow-md border border-emerald-950">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-emerald-800/60 pb-4 mb-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-semibold">
+                                ☀️ Live-WetterRadar & Mikroklima August
+                            </span>
+                            <span class="text-xs text-gray-300">São Miguel (Azoren)</span>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold mt-1 text-white">
+                            Inselwetter & Mikroklima auf einen Blick
+                        </h3>
+                        <p class="text-xs md:text-sm text-gray-300 mt-0.5">
+                            Die Azoren besitzen bis zu 4 Jahreszeiten an einem Tag! Nutzt den Umschalter unten, um das aktuelle Wetter der Inselregionen zu prüfen.
+                        </p>
+                    </div>
+
+                    <!-- Climate Stats Quick Badges -->
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        <div class="bg-white/10 backdrop-blur px-3 py-2 rounded-xl border border-white/10 text-center min-w-[85px]">
+                            <span class="block text-[10px] text-gray-300 uppercase">Luft Temp</span>
+                            <span class="font-bold text-amber-300 text-sm">24° - 26°C</span>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur px-3 py-2 rounded-xl border border-white/10 text-center min-w-[85px]">
+                            <span class="block text-[10px] text-gray-300 uppercase">Wasser Temp</span>
+                            <span class="font-bold text-sky-300 text-sm">22° - 23°C</span>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur px-3 py-2 rounded-xl border border-white/10 text-center min-w-[85px]">
+                            <span class="block text-[10px] text-gray-300 uppercase">UV-Index</span>
+                            <span class="font-bold text-orange-400 text-sm">8 (Hoch)</span>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur px-3 py-2 rounded-xl border border-white/10 text-center min-w-[85px]">
+                            <span class="block text-[10px] text-gray-300 uppercase">Sonne/Tag</span>
+                            <span class="font-bold text-yellow-200 text-sm">~7 Std</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regional Interactive Weather Switcher -->
+                <div>
+                    <span class="text-xs font-semibold text-gray-300 block mb-2">Region wählen für Live-Mikroklima & SpotAzores Empfehlung:</span>
+                    <div class="flex flex-wrap gap-2 mb-4 text-xs">
+                        <button onclick="updateMainWeather('setecidades')" id="wbtn-setecidades" class="weather-reg-btn active px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-medium transition">🌋 Sete Cidades (Westen)</button>
+                        <button onclick="updateMainWeather('furnas')" id="wbtn-furnas" class="weather-reg-btn px-3 py-1.5 rounded-lg bg-white/10 text-gray-200 hover:bg-white/20 font-medium transition">♨️ Furnas (Osten)</button>
+                        <button onclick="updateMainWeather('ponta')" id="wbtn-ponta" class="weather-reg-btn px-3 py-1.5 rounded-lg bg-white/10 text-gray-200 hover:bg-white/20 font-medium transition">🏙️ Ponta Delgada (Süden)</button>
+                        <button onclick="updateMainWeather('nordeste')" id="wbtn-nordeste" class="weather-reg-btn px-3 py-1.5 rounded-lg bg-white/10 text-gray-200 hover:bg-white/20 font-medium transition">🌿 Nordeste (Nordost)</button>
+                        <button onclick="updateMainWeather('ribeira')" id="wbtn-ribeira" class="weather-reg-btn px-3 py-1.5 rounded-lg bg-white/10 text-gray-200 hover:bg-white/20 font-medium transition">🏖️ Ribeira Grande (Norden)</button>
+                    </div>
+
+                    <!-- Dynamic Weather Card -->
+                    <div id="mainWeatherCard" class="bg-white/10 backdrop-blur p-4 rounded-xl border border-white/15 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Facts & Basecamp Drive Times Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <!-- Basecamp & Driving Times Card -->
+                <div class="bg-white p-5 rounded-2xl border border-azores-border shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-azores-dark text-base flex items-center gap-2">
+                                <span>🏡</span> Basecamp: Fajã de Cima
+                            </h3>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Perfekte Lage</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mb-4">
+                            Euer AirBnB in Fajã de Cima liegt optimal für entspannte Sternfahrten über die gesamte Insel.
+                        </p>
+                        <ul class="text-xs space-y-2 text-slate-700">
+                            <li class="flex justify-between border-b border-slate-100 pb-1.5">
+                                <span>✈️ Flughafen PDL:</span>
+                                <strong class="text-azores-dark">ca. 10 Min.</strong>
+                            </li>
+                            <li class="flex justify-between border-b border-slate-100 pb-1.5">
+                                <span>🌋 Lagoa do Fogo:</span>
+                                <strong class="text-azores-dark">ca. 20 Min.</strong>
+                            </li>
+                            <li class="flex justify-between border-b border-slate-100 pb-1.5">
+                                <span>☕ Gorreana Teefelder:</span>
+                                <strong class="text-azores-dark">ca. 25 Min.</strong>
+                            </li>
+                            <li class="flex justify-between border-b border-slate-100 pb-1.5">
+                                <span>🌋 Sete Cidades:</span>
+                                <strong class="text-azores-dark">ca. 30 Min.</strong>
+                            </li>
+                            <li class="flex justify-between pb-1">
+                                <span>♨️ Furnas (Thermen):</span>
+                                <strong class="text-azores-dark">ca. 40 Min.</strong>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Quick Stats Overview -->
+                <div class="bg-white p-5 rounded-2xl border border-azores-border shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-azores-dark text-base flex items-center gap-2">
+                                <span>📊</span> Key Facts des Trips
+                            </h3>
+                            <span class="text-[10px] bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded-full">8 Urlaubstage</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 text-center mb-3">
+                            <div class="bg-azores-sand p-3 rounded-xl border border-slate-200">
+                                <span class="block text-lg font-bold text-azores-emerald">43.5 km</span>
+                                <span class="text-[11px] text-slate-600 font-medium">Gesamt-Wandern</span>
+                            </div>
+                            <div class="bg-azores-sand p-3 rounded-xl border border-slate-200">
+                                <span class="block text-lg font-bold text-azores-ocean">5 Spots</span>
+                                <span class="text-[11px] text-slate-600 font-medium">Thermen & Strände</span>
+                            </div>
+                            <div class="bg-azores-sand p-3 rounded-xl border border-slate-200">
+                                <span class="block text-lg font-bold text-azores-terracotta">2 Gepäckst.</span>
+                                <span class="text-[11px] text-slate-600 font-medium">Nur Handgepäck</span>
+                            </div>
+                            <div class="bg-azores-sand p-3 rounded-xl border border-slate-200">
+                                <span class="block text-lg font-bold text-amber-600">100%</span>
+                                <span class="text-[11px] text-slate-600 font-medium">Flexibel mit Auto</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="switchTab('dashboard')" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 transition">
+                        Detail-Statistiken & Grafiken ansehen →
+                    </button>
+                </div>
+
+                <!-- Goldene Insel-Regeln -->
+                <div class="bg-amber-50/80 p-5 rounded-2xl border border-amber-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-amber-950 text-base flex items-center gap-2">
+                                <span>💡</span> Goldene Regeln
+                            </h3>
+                            <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">Wichtig</span>
+                        </div>
+                        <ul class="text-xs space-y-2.5 text-amber-950 list-disc pl-4 mt-2">
+                            <li><strong>SpotAzores nutzen:</strong> Kraterseen vor Abfahrt immer auf Live-Webcams prüfen!</li>
+                            <li><strong>Alte Badesachen:</strong> Eisenhaltiges Thermalwasser färbt helle Stoffe braun.</li>
+                            <li><strong>Mietwagen-Kreditkarte:</strong> Echte Kreditkarte auf den Namen des Hauptfahrers bereithalten.</li>
+                            <li><strong>Tickets vorab:</strong> Ilhéu de Vila Franca & Caldeira Velha benötigen Online-Slots.</li>
+                        </ul>
+                    </div>
+                    <button onclick="switchTab('tips')" class="w-full mt-4 py-2 bg-amber-200/80 hover:bg-amber-300/80 text-amber-950 font-bold text-xs rounded-xl border border-amber-300 transition">
+                        Webcam-Simulator & Insider-Tipps →
+                    </button>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- ================= TAB 2: TAGES-ETAPPEN (ITINERARY) ================= -->
+        <section id="sec-itinerary" class="tab-content hidden space-y-6">
+
+            <!-- Intro Info Box -->
+            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs md:text-sm text-emerald-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                <div class="space-y-1">
+                    <h3 class="font-bold text-emerald-950 text-base flex items-center gap-2">
+                        <span>🗓️</span> Interaktiver 8-Tage Ablaufplan
+                    </h3>
+                    <p class="text-emerald-900">
+                        Euer Basecamp in <strong>Fajã de Cima</strong> erlaubt entspannte Sternfahrten (max. 20–50 Min). Durchsucht die Tage oder nutzt die Schnell-Filter.
+                    </p>
+                </div>
+                <!-- View Switcher Toggle -->
+                <div class="flex items-center gap-1 bg-white p-1 rounded-xl border border-emerald-200 text-xs shrink-0">
+                    <button onclick="setItineraryView('grid')" id="viewBtnGrid" class="px-3 py-1.5 rounded-lg font-bold bg-azores-dark text-white">📇 Karten</button>
+                    <button onclick="setItineraryView('timeline')" id="viewBtnTimeline" class="px-3 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100">⏱️ Zeitstrahl</button>
+                </div>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-azores-border flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+                <!-- Search Input -->
+                <div class="relative flex-grow max-w-md">
+                    <input type="text" id="itinerarySearch" oninput="filterItinerary()" placeholder="🔍 Stichwort suchen (z. B. Wandern, Therme, Tee, Strand)..." class="w-full text-xs md:text-sm px-3.5 py-2 pl-9 rounded-xl border border-slate-200 focus:outline-none focus:border-azores-ocean text-slate-800">
+                    <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+                </div>
+
+                <!-- Category Filters -->
+                <div class="flex flex-wrap gap-1.5 text-xs">
+                    <button onclick="filterItineraryCategory('all')" class="filter-btn active px-3 py-1.5 rounded-lg border font-medium">Alle Tage (8)</button>
+                    <button onclick="filterItineraryCategory('wandern')" class="filter-btn px-3 py-1.5 bg-slate-100 rounded-lg border font-medium text-slate-700 hover:bg-slate-200">🥾 Wandern</button>
+                    <button onclick="filterItineraryCategory('strand')" class="filter-btn px-3 py-1.5 bg-slate-100 rounded-lg border font-medium text-slate-700 hover:bg-slate-200">🏖️ Strand</button>
+                    <button onclick="filterItineraryCategory('therme')" class="filter-btn px-3 py-1.5 bg-slate-100 rounded-lg border font-medium text-slate-700 hover:bg-slate-200">♨️ Thermen</button>
+                    <button onclick="filterItineraryCategory('kultur')" class="filter-btn px-3 py-1.5 bg-slate-100 rounded-lg border font-medium text-slate-700 hover:bg-slate-200">☕ Kultur</button>
+                </div>
+            </div>
+
+            <!-- Daily Cards Grid or Timeline -->
+            <div id="itineraryContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </section>
+
+        <!-- ================= TAB 3: PACKING LIST ================= -->
+        <section id="sec-packing" class="tab-content hidden space-y-6">
+            <div class="bg-sky-50 border border-sky-200 rounded-2xl p-5 text-sm text-sky-950">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div>
+                        <h3 class="font-bold text-sky-950 text-base mb-1 flex items-center gap-2">
+                            <span>🎒</span> Handgepäck-Packliste für Annamaus & Kai
+                        </h3>
+                        <p class="text-xs md:text-sm text-sky-900">
+                            Optimiert für 1x Underseater (40x30x25 cm) & 1x Overhead Trolley (55x40x23 cm) pro Person.
+                            <strong>Klickt Gegenstände an, um sie abzuhaken.</strong> Der Fortschritt wird automatisch im Browser gespeichert!
+                        </p>
+                    </div>
+                    <button onclick="resetPackingList()" class="text-xs bg-white text-sky-800 px-3 py-1.5 rounded-lg border border-sky-300 font-medium hover:bg-sky-100 transition shrink-0">
+                        🔄 Liste zurücksetzen
+                    </button>
+                </div>
+
+                <!-- Packing Progress Bar -->
+                <div class="mt-4 bg-sky-200/80 rounded-full h-3.5 overflow-hidden p-0.5 border border-sky-300">
+                    <div id="packingProgressBar" class="bg-emerald-600 h-full rounded-full transition-all duration-500 shadow-sm" style="width: 0%;"></div>
+                </div>
+                <div class="flex justify-between items-center mt-1.5 text-xs text-sky-900 font-bold">
+                    <span id="packStatusText">0 von 0 Gegenständen gepackt</span>
+                    <span id="packPercentText" class="text-emerald-700 bg-white px-2 py-0.5 rounded-md border border-sky-200">0% bereit</span>
+                </div>
+            </div>
+
+            <!-- Search and Category Filters -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-azores-border flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+                <div class="relative flex-grow max-w-xs">
+                    <input type="text" id="packSearch" oninput="renderPackingList()" placeholder="🔍 Gegenstand suchen..." class="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-azores-ocean text-slate-800">
+                </div>
+                <div class="flex flex-wrap gap-1.5 text-xs">
+                    <button onclick="filterPacking('all')" class="pack-filter-btn font-bold bg-azores-dark text-white px-3 py-1.5 rounded-lg">Alle Kategorien</button>
+                    <button onclick="filterPacking('flug')" class="pack-filter-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200">✈️ Flug-Outfit</button>
+                    <button onclick="filterPacking('kleidung')" class="pack-filter-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200">👕 Kleidung</button>
+                    <button onclick="filterPacking('badezeug')" class="pack-filter-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200">🩱 Badezeug</button>
+                    <button onclick="filterPacking('schuhe')" class="pack-filter-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200">👟 Schuhe</button>
+                    <button onclick="filterPacking('kultur')" class="pack-filter-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200">🧴 Kulturbeutel</button>
+                    <button onclick="filterPacking('technik')" class="pack-filter-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200">📱 Technik & Doku</button>
+                </div>
+            </div>
+
+            <!-- Thermal Bath Warning Box -->
+            <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-2xl text-xs md:text-sm text-amber-950 flex items-start gap-3 shadow-sm">
+                <span class="text-2xl">⚠️</span>
+                <div>
+                    <strong class="text-amber-950 font-bold block mb-0.5">WICHTIGER THERMEN-HINWEIS FÜR BEIDE:</strong>
+                    Packt unbedingt <strong>alte, dunkle Badesachen</strong> für <em>Terra Nostra</em> und <em>Caldeira Velha</em> ein! Das eisenhaltige Thermalwasser färbt helle Stoffe und Handtücher dauerhaft orange-braun.
+                </div>
+            </div>
+
+            <!-- Packing List Grid -->
+            <div id="packingListContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </section>
+
+        <!-- ================= TAB 4: DASHBOARD & CHARTS ================= -->
+        <section id="sec-dashboard" class="tab-content hidden space-y-6">
+            <div class="bg-slate-100 border border-slate-200 rounded-2xl p-4 text-xs md:text-sm text-slate-800">
+                <h3 class="font-bold text-azores-dark text-base mb-1 flex items-center gap-2">
+                    <span>📊</span> Aktivitäts- & Touren-Analyse
+                </h3>
+                <p>
+                    Hier findet ihr die Auswertung eurer Reise. Die Diagramme zeigen die eingeplante Wanderdistanz pro Tag sowie das ausgewogene Verhältnis zwischen Wandern, Strandtagen und thermaler Entspannung.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart 1 Container -->
+                <div class="bg-white p-5 rounded-2xl border border-azores-border shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-azores-dark text-sm md:text-base">🥾 Tägliche Wanderdistanzen (km)</h3>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold">Gesamt: ~43,5 km</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mb-4">Übersicht der eingeplanten Wanderstrecken über die 8 Urlaubstage.</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="hikeDistanceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2 Container -->
+                <div class="bg-white p-5 rounded-2xl border border-azores-border shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-azores-dark text-sm md:text-base">⚖️ Aktivitäts-Mix (Verteilung)</h3>
+                            <span class="text-xs bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-full font-bold">Ausgewogen</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mb-4">Verhältnis der Aktivitäten (Wandern, Strand, Therme & Kultur).</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="activityMixChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Table of Fitness & Logistics -->
+            <div class="bg-white p-5 rounded-2xl border border-azores-border shadow-sm">
+                <h3 class="font-bold text-azores-dark text-sm md:text-base mb-3 flex items-center gap-2">
+                    <span>📍</span> Touren-Übersicht & Fahrzeiten ab Fajã de Cima
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs md:text-sm">
+                        <thead class="bg-azores-sand text-azores-dark font-bold uppercase text-[11px]">
+                            <tr>
+                                <th class="p-3 rounded-l-xl">Tag</th>
+                                <th class="p-3">Hauptregion</th>
+                                <th class="p-3">Fahrzeit (einfach)</th>
+                                <th class="p-3">Wichtigste Highlights</th>
+                                <th class="p-3 rounded-r-xl">Anstrengung</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold">Tag 1 (Sa)</td>
+                                <td class="p-3">Ponta Delgada</td>
+                                <td class="p-3">ca. 10 Min</td>
+                                <td class="p-3">Altstadt, Portas do Mar, Dinner</td>
+                                <td class="p-3"><span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Gering</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold">Tag 2 (So)</td>
+                                <td class="p-3">Sete Cidades / West</td>
+                                <td class="p-3">ca. 30 Min</td>
+                                <td class="p-3">Sete Cidades Krater (12 km) & Ferraria Meer-Therme</td>
+                                <td class="p-3"><span class="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Hoch</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold">Tag 3 (Mo)</td>
+                                <td class="p-3">Gorreana / Nord</td>
+                                <td class="p-3">ca. 25 Min</td>
+                                <td class="p-3">Teefeld-Wanderung (5 km) & Praia Santa Bárbara</td>
+                                <td class="p-3"><span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Mittel</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold">Tag 4 (Di)</td>
+                                <td class="p-3">Furnas / Ost</td>
+                                <td class="p-3">ca. 40 Min</td>
+                                <td class="p-3">Lagoa das Furnas (9 km), Cozido & Terra Nostra Park</td>
+                                <td class="p-3"><span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Mittel</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold">Tag 5 (Mi)</td>
+                                <td class="p-3">Vila Franca / Süd</td>
+                                <td class="p-3">ca. 25 Min</td>
+                                <td class="p-3">Ilhéu Kraterinsel Schnorcheln & Água d'Alto Strand</td>
+                                <td class="p-3"><span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Gering</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold">Tag 6 (Do)</td>
+                                <td class="p-3">Lagoa do Fogo / Mitte</td>
+                                <td class="p-3">ca. 20 Min</td>
+                                <td class="p-3">Janela do Inferno Wanderung (7.6 km) & Caldeira Velha</td>
+                                <td class="p-3"><span class="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Hoch</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold">Tag 7 (Fr)</td>
+                                <td class="p-3">Nordeste / Nordost</td>
+                                <td class="p-3">ca. 50 Min</td>
+                                <td class="p-3">Wasserfälle, Miradouro Ponta do Sossego & Küste</td>
+                                <td class="p-3"><span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Mittel</span></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold">Tag 8 (Sa)</td>
+                                <td class="p-3">Ponta Delgada</td>
+                                <td class="p-3">ca. 10 Min</td>
+                                <td class="p-3">Bolo Lêvedo Frühstück & Souvenir-Einkauf</td>
+                                <td class="p-3"><span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Sehr gering</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 5: SPOT FINDER ================= -->
+        <section id="sec-spots" class="tab-content hidden space-y-6">
+            <div class="bg-teal-50 border border-teal-200 rounded-2xl p-4 text-xs md:text-sm text-teal-950">
+                <h3 class="font-bold text-teal-950 text-base mb-1 flex items-center gap-2">
+                    <span>📍</span> São Miguel Highlight- & Spot-Finder
+                </h3>
+                <p>
+                    Erkundet die wichtigsten Insel-Highlights. Welcher Ort erfordert Online-Tickets? Wo müsst ihr auf die Gezeiten achten? Nutzt die Suche und Filter!
+                </p>
+            </div>
+
+            <!-- Spot Search & Region Filter -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-azores-border flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+                <div class="relative flex-grow max-w-md">
+                    <input type="text" id="spotSearch" oninput="renderSpots()" placeholder="🔍 Spot suchen (z. B. Ferraria, Krater, Tee)..." class="w-full text-xs md:text-sm px-3.5 py-2 pl-9 rounded-xl border border-slate-200 focus:outline-none focus:border-azores-ocean text-slate-800">
+                    <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+                </div>
+                <div class="flex flex-wrap gap-1.5 text-xs">
+                    <button onclick="filterSpotRegion('all')" class="spot-reg-btn active px-3 py-1.5 rounded-lg border font-medium bg-azores-ocean text-white">Alle Regionen</button>
+                    <button onclick="filterSpotRegion('Westen')" class="spot-reg-btn px-3 py-1.5 bg-slate-100 rounded-lg border font-medium text-slate-700 hover:bg-slate-200">Westen</button>
+                    <button onclick="filterSpotRegion('Norden')" class="spot-reg-btn px-3 py-1.5 bg-slate-100 rounded-lg border font-medium text-slate-700 hover:bg-slate-200">Norden</button>
+                    <button onclick="filterSpotRegion('Osten')" class="spot-reg-btn px-3 py-1.5 bg-slate-100 rounded-lg border font-medium text-slate-700 hover:bg-slate-200">Osten</button>
+                    <button onclick="filterSpotRegion('Süden')" class="spot-reg-btn px-3 py-1.5 bg-slate-100 rounded-lg border font-medium text-slate-700 hover:bg-slate-200">Süden</button>
+                    <button onclick="filterSpotRegion('Mitte')" class="spot-reg-btn px-3 py-1.5 bg-slate-100 rounded-lg border font-medium text-slate-700 hover:bg-slate-200">Mitte</button>
+                </div>
+            </div>
+
+            <!-- Spot Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="spotsGrid">
+                <!-- Populated dynamically -->
+            </div>
+        </section>
+
+        <!-- ================= TAB 6: INSIDER TIPS & WEATHER CAM SIMULATOR ================= -->
+        <section id="sec-tips" class="tab-content hidden space-y-6">
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs md:text-sm text-amber-950">
+                <h3 class="font-bold text-amber-950 text-base mb-1 flex items-center gap-2">
+                    <span>💡</span> Insider-Tipps & SpotAzores Webcam-Simulator
+                </h3>
+                <p>
+                    Mikroklima verstehen: Auf den Azoren regnet es selten überall gleichzeitig. Bevor ihr zu Kraterseen aufbrecht, solltet ihr zwingend die Live-Webcams in der <em>SpotAzores</em> App prüfen!
+                </p>
+            </div>
+
+            <!-- SpotAzores Weather Interactive Simulator -->
+            <div class="bg-white p-6 rounded-2xl border border-azores-border shadow-sm">
+                <h3 class="font-bold text-azores-dark text-base mb-2 flex items-center gap-2">
+                    <span>📷</span> SpotAzores Live-Webcam Simulator
+                </h3>
+                <p class="text-xs text-gray-600 mb-4">
+                    Simuliert den Einfluss des Wetters am Lagoa do Fogo / Sete Cidades. Oft scheint an der Küste die Sonne, während der Kratersee in dichtem Nebel liegt (oder umgekehrt!).
+                </p>
+
+                <div class="flex flex-wrap items-center gap-3 mb-4">
+                    <span class="text-xs font-bold text-gray-700">Wetterbedingungen wählen:</span>
+                    <button onclick="setSimulatedWeather('sunny')" id="btnSimSunny" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-sm">☀️ Sonnige Sicht auf Krater</button>
+                    <button onclick="setSimulatedWeather('foggy')" id="btnSimFoggy" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300">🌫️ Dichter Nebel / Wolken</button>
+                </div>
+
+                <div id="simulatedWebcamBox" class="relative rounded-2xl overflow-hidden border border-slate-300 bg-slate-800 text-white p-6 flex flex-col justify-end min-h-[220px] transition-all duration-500 shadow-inner">
+                    <div class="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow">
+                        <span class="w-2 h-2 rounded-full bg-white animate-ping"></span> LIVE WEBCAM CAM-04 (Lagoa do Fogo)
+                    </div>
+                    <div id="simViewContent">
+                        <h4 class="text-lg font-bold text-yellow-300">☀️ Klare Sicht am Kratersee!</h4>
+                        <p class="text-xs text-gray-100 mt-1">Perfekte Bedingungen für die Wanderung und den Aussichtspunkt Miradouro da Boca do Inferno. Sofort aufbrechen!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Important Tips Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-5 rounded-2xl border border-azores-border shadow-sm">
+                    <h3 class="font-bold text-azores-dark text-sm md:text-base mb-2 flex items-center gap-2">
+                        <span>🚘</span> Mietwagen & Straßenverkehr
+                    </h3>
+                    <ul class="text-xs md:text-sm text-slate-700 space-y-2 list-disc pl-4">
+                        <li><strong>Kreditkarte Pflicht:</strong> Stellt sicher, dass ihr eine echte Kreditkarte (mit Rahmen für die Kaution) dabei habt.</li>
+                        <li><strong>Kühe auf der Fahrbahn:</strong> Besonders auf den Landstraßen um Sete Cidades und Nordeste stehen oft Kühe mitten auf der Straße. Vorausschauend fahren!</li>
+                        <li><strong>Steile Hangstraßen:</strong> Bei der Fahrt hinab zu Buchten (z.B. Mosteiros) vorausschauend schalten.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-azores-border shadow-sm">
+                    <h3 class="font-bold text-azores-dark text-sm md:text-base mb-2 flex items-center gap-2">
+                        <span>🎫</span> Pflicht-Vorabbuchungen (Tickets)
+                    </h3>
+                    <ul class="text-xs md:text-sm text-slate-700 space-y-2 list-disc pl-4">
+                        <li><strong>Ilhéu de Vila Franca do Campo:</strong> Das Naturschutzgebiet lässt nur begrenzte Besucher pro Tag zu. Tickets unbedingt vorab buchen!</li>
+                        <li><strong>Caldeira Velha:</strong> Der Eintritt in die Dschungeltherme erfordert die Buchung eines festen 2-Stunden-Zeitslots.</li>
+                        <li><strong>Terra Nostra Park:</strong> Tickets direkt vor Ort oder online sichern.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-azores-border shadow-sm">
+                    <h3 class="font-bold text-azores-dark text-sm md:text-base mb-2 flex items-center gap-2">
+                        <span>🧥</span> Zwiebelprinzip & Bekleidung
+                    </h3>
+                    <ul class="text-xs md:text-sm text-slate-700 space-y-2 list-disc pl-4">
+                        <li><strong>Windbreaker im Tagesrucksack:</strong> Auf den Kraterrändern weht oft starker Wind. Die Regenjacke gehört immer in den Rucksack.</li>
+                        <li><strong>Alte Badesachen:</strong> Für Terra Nostra & Caldeira Velha alte/dunkle Badesachen nutzen (Eisen färbt dauerhaft orange!).</li>
+                        <li><strong>Trailrunner / Wanderschuhe:</strong> Perfekt für feuchte Waldpfade und Vulkangestein.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-azores-border shadow-sm">
+                    <h3 class="font-bold text-azores-dark text-sm md:text-base mb-2 flex items-center gap-2">
+                        <span>🍽️</span> Kulinarische Highlights
+                    </h3>
+                    <ul class="text-xs md:text-sm text-slate-700 space-y-2 list-disc pl-4">
+                        <li><strong>Bolo Lêvedo:</strong> Süßes portugiesisches Muffin-Brot – ideal als Wander-Snack oder zum Frühstück.</li>
+                        <li><strong>Cozido das Furnas:</strong> Fleisch- und Gemüseeintopf, der 6 Stunden lang in vulkanischen Erdlöchern gart.</li>
+                        <li><strong>Frischer Fisch & Lapas:</strong> Frischer Thunfisch und gegrillte Napfschnecken (*Lapas*) mit Knoblauchbutter genießen.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-azores-dark text-gray-400 py-6 border-t border-emerald-950 mt-12 text-xs">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-2">
+            <p class="text-gray-300 font-medium">São Miguel Handgepäck-Reiseplan für Annamaus & Kai • 22.08. – 29.08.2026 🌴</p>
+            <p>Erstellt mit Basecamp in Fajã de Cima. Alle Touren, Wetterdaten & Packlisten interaktiv vereint.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Data & Logic -->
+    <script>
+        // Regional Weather Data Dictionary for August
+        const regionWeatherData = {
+            setecidades: {
+                title: "Sete Cidades (Westen)",
+                temp: "22°C (Kraterrand) / 25°C (Küste)",
+                cond: "⛅ Leicht bewölkt mit Krater-Nebel-Risiko",
+                wind: "🍃 18 km/h Südwest",
+                uv: "8 (Sehr Hoch)",
+                fogRisk: "Mittel (35%)",
+                recommendation: "SpotAzores App morgens prüfen! Wenn Nebel liegt, erst Mosteiros & Ferraria besuchen und nachmittags hoch zum Krater.",
+                badgeColor: "bg-emerald-500"
+            },
+            furnas: {
+                title: "Furnas & Lagoa das Furnas (Osten)",
+                temp: "24°C / Hohe Luftfeuchte (80%)",
+                cond: "🌤️ Leicht bewölkt mit Geothermie-Dunst",
+                wind: "🍃 12 km/h Ost",
+                uv: "7 (Hoch)",
+                fogRisk: "Gering (15%)",
+                recommendation: "Ideal für Wandern um den See & anschließendes Thermenbad im Terra Nostra Park!",
+                badgeColor: "bg-amber-500"
+            },
+            ponta: {
+                title: "Ponta Delgada & Fajã de Cima (Süden)",
+                temp: "25°C / Sehr angenehm",
+                cond: "☀️ Überwiegend sonnig",
+                wind: "🍃 15 km/h Süd",
+                uv: "8 (Sehr Hoch)",
+                fogRisk: "Sehr Gering (5%)",
+                recommendation: "Perfektes Küstenwetter! Ideal für Stadtbummel, Hafen oder Abfahrt zu allen Inselteilen.",
+                badgeColor: "bg-sky-500"
+            },
+            nordeste: {
+                title: "Nordeste & Parque dos Caldeirões (Nordost)",
+                temp: "23°C / Frische Brise",
+                cond: "⛅ Wechselnd bewölkt mit Regenschauer-Sonne-Mix",
+                wind: "🍃 22 km/h Nordost",
+                uv: "7 (Hoch)",
+                fogRisk: "Gering (20%)",
+                recommendation: "Toll für Küsten-Aussichtspunkte (Ponta do Sossego) und Wasserfall-Spaziergänge.",
+                badgeColor: "bg-teal-500"
+            },
+            ribeira: {
+                title: "Ribeira Grande & Praia Santa Bárbara (Norden)",
+                temp: "25°C / Wassertemperatur 22°C",
+                cond: "☀️ Sonnig mit leichten Strandwolken",
+                wind: "🌬️ 20 km/h Nord (Perfekt für Surfer)",
+                uv: "8 (Sehr Hoch)",
+                fogRisk: "Sehr Gering (5%)",
+                recommendation: "Traumwetter für den schwarze Sandstrand Santa Bárbara oder Teefeld-Wanderung bei Gorreana!",
+                badgeColor: "bg-blue-500"
+            }
+        };
+
+        // Itinerary Dataset
+        const itineraryData = [
+            {
+                day: 1,
+                date: "Sa, 22.08.2026",
+                title: "Ankunft & Hauptstadt-Flair",
+                region: "Ponta Delgada",
+                driveTime: "ca. 10 Min",
+                hikeKm: 2,
+                effort: "gering",
+                weatherBadge: "☀️ Küsten-Sonne",
+                category: ["kultur"],
+                morning: "Ankunft am Flughafen Ponta Delgada, Mietwagen-Übernahme und kurze Fahrt (10 Min) ins AirBnB nach Fajã de Cima zum Check-in.",
+                afternoon: "Fahrt nach Ponta Delgada. Entspannter Spaziergang entlang der Hafenpromenade (Portas do Mar) und durch die historische Altstadt (Portas da Cidade). Eindecken mit Proviant im Supermarkt.",
+                evening: "Abendessen in Ponta Delgada: Frische Meeresfrüchte oder lokales Azoren-Steak zur Feier der Ankunft.",
+                tip: "Kreditkarte für Mietwagen-Kaution bereithalten & ersten Snack mit Bolo Lêvedo genießen!",
+                tags: ["Mietwagen", "Ponta Delgada", "Check-in"]
+            },
+            {
+                day: 2,
+                date: "So, 23.08.2026",
+                title: "Das Wunder des Westens (Sete Cidades)",
+                region: "Westen",
+                driveTime: "ca. 30 Min",
+                hikeKm: 12,
+                effort: "hoch",
+                weatherBadge: "🌫️ Kraternebel-Check",
+                category: ["wandern", "strand", "therme"],
+                morning: "Fahrt zum Krater Sete Cidades. Parken oben und Start der spektakulären Kraterrand-Wanderung 'Cume da Caldeira' (PRC4 SMI, ca. 12 km, 4 Std.) vorbei am Miradouro da Boca do Inferno mit Blick auf den grünen und blauen See.",
+                afternoon: "Fahrt an die Westküste nach Mosteiros zum schwarze Lavastrand. Anschließend Weiterfahrt zur Ponta da Ferraria.",
+                evening: "Baden im offenen Ozean an der Ponta da Ferraria! Hier strömt eine heiße Thermalquelle direkt ins kalte Meerwasser (Wichtig: Gezeiten beachten – ideal bei Ebbe bis halber Flut!).",
+                tip: "SpotAzores App morgens checken, ob der Krater nebulös ist!",
+                tags: ["Sete Cidades", "Ferraria", "Heiße Quelle", "Wandern 12km"]
+            },
+            {
+                day: 3,
+                date: "Mo, 24.08.2026",
+                title: "Teeplantagen & Surf-Vibes (Norden)",
+                region: "Norden",
+                driveTime: "ca. 25 Min",
+                hikeKm: 5,
+                effort: "mittel",
+                weatherBadge: "☀️ Perfektes Strandwetter",
+                category: ["wandern", "strand", "kultur"],
+                morning: "Fahrt zur Teeplantage Gorreana (der ältesten Europas). Rundwanderung 'Trilho do Chá / Moinhos' (ca. 5 km) direkt durch die grünen Teefelder. Im Anschluss kostenlose Teeverkostung in der Fabrik.",
+                afternoon: "Stopp am Aussichtspunkt Miradouro de Santa Iria. Danach Fahrt zum Praia de Santa Bárbara (Ribeira Grande) – langes schwarzes Sandstrand-Paradies.",
+                evening: "Entpannen an der Strandbar des Praia de Santa Bárbara, Surfern zusehen oder einen Abstecher zum ruhigen Praia dos Moinhos machen.",
+                tip: "Perfekter Tag für Kombi aus Bewegung und Chillout am Surfstrand!",
+                tags: ["Gorreana Tee", "Santa Bárbara", "Surfen", "Teefelder"]
+            },
+            {
+                day: 4,
+                date: "Di, 25.08.2026",
+                title: "Geothermie & Botanik (Furnas)",
+                region: "Osten / Furnas",
+                driveTime: "ca. 40 Min",
+                hikeKm: 9,
+                effort: "mittel",
+                weatherBadge: "♨️ Ideal für Thermen",
+                category: ["wandern", "therme", "kultur"],
+                morning: "Fahrt nach Furnas. Leichte Rundwanderung um den Kratersee Lagoa das Furnas & Salto do Rosal Wasserfall (ca. 9 km). Beobachten, wie der Traditions-Eintopf 'Cozido' in Erdlöchern durch Erdwärme gart.",
+                afternoon: "Herzhaftes Cozido-Mittagessen in Furnas. Danach Besuch des botanischen Terra Nostra Parks und ausgiebiges Entspannen im 38°C warmen, eisenhaltigen Thermalbecken.",
+                evening: "Rückfahrt nach Fajã de Cima und gemütlicher Ausklang.",
+                tip: "UNBEDINGT alte/dunkle Badesachen für das braune Thermalwasser nutzen!",
+                tags: ["Furnas", "Cozido", "Terra Nostra", "Thermalbad"]
+            },
+            {
+                day: 5,
+                date: "Mi, 26.08.2026",
+                title: "Insel-Abenteuer im Ozean (Süden)",
+                region: "Süden",
+                driveTime: "ca. 25 Min",
+                hikeKm: 3,
+                effort: "gering",
+                weatherBadge: "🌊 Ruhige See / Schnorcheln",
+                category: ["strand", "kultur"],
+                morning: "Fahrt nach Vila Franca do Campo. Bootstransfer zur vorgelagerten Vulkaninsel Ilhéu de Vila Franca do Campo. Schwimmen & Schnorcheln im kreisrunden Vulkankrater mitten im Atlantik.",
+                afternoon: "Nach dem Bootstrip Entspannung am ruhigen Sandstrand Praia de Água d'Alto an der Südküste.",
+                evening: "Abendessen in Vila Franca do Campo (frischer Oktopus oder Lapas).",
+                tip: "Bootstickets für Ilhéu zwingend vorab online buchen!",
+                tags: ["Ilhéu Kraterinsel", "Schnorcheln", "Água d'Alto", "Bootstour"]
+            },
+            {
+                day: 6,
+                date: "Do, 27.08.2026",
+                title: "Wildnis, Aquädukte & Wasserfälle (Mitte)",
+                region: "Inselmitte",
+                driveTime: "ca. 20 Min",
+                hikeKm: 7.6,
+                effort: "hoch",
+                weatherBadge: "⛅ Dschungel-Klima",
+                category: ["wandern", "therme"],
+                morning: "Spektakuläre Wanderung 'Rota da Água - Janela do Inferno' (ca. 7,6 km). Der Weg führt durch dichten Dschungel, alte Aquädukte und dunkle Tunnel bis zu einer imposanten Wasserfall-Felswand.",
+                afternoon: "Rückweg mit Zwischenstopp bei der Caldeira Velha – natürliche warme Pools mitten im Farn-Dschungel mit direkt hineinfallendem Wasserfall.",
+                evening: "Aussichtspunkt auf den hochgelegenen Kratersee Lagoa do Fogo genießen.",
+                tip: "Taschenlampe/Handylicht für die Tunnel & Online-Zeitslot für Caldeira Velha buchen!",
+                tags: ["Janela do Inferno", "Tunnel-Hike", "Caldeira Velha", "Lagoa do Fogo"]
+            },
+            {
+                day: 7,
+                date: "Fr, 28.08.2026",
+                title: "Der unberührte Nordosten (Nordeste)",
+                region: "Nordeste",
+                driveTime: "ca. 50 Min",
+                hikeKm: 4,
+                effort: "mittel",
+                weatherBadge: "🌿 Frische Küstenbrise",
+                category: ["wandern", "strand", "kultur"],
+                morning: "Fahrt in den wilden Nordosten. Besuch des Parque Natural dos Caldeirões mit seinen alten Wassermühlen und imposanten Wasserfällen.",
+                afternoon: "Malerische Fahrt entlang der Steilküste mit Stopps an spektakulären Aussichtspunkten (Miradouro da Ponta do Sossego). Baden im Meerwasserschwimmbecken von Boca da Ribeira oder am Strand Lombo Gordo.",
+                evening: "Letztes großes Abendessen in Ponta Delgada.",
+                tip: "Die Küstenstraße im Nordosten zählt zu den schönsten Panoramastrecken!",
+                tags: ["Nordeste", "Wasserfälle", "Caldeirões", "Ponta do Sossego"]
+            },
+            {
+                day: 8,
+                date: "Sa, 29.08.2026",
+                title: "Abreise & Souvenir-Endspurt",
+                region: "Ponta Delgada",
+                driveTime: "ca. 10 Min",
+                hikeKm: 1,
+                effort: "gering",
+                weatherBadge: "☀️ Mild & Sonnig",
+                category: ["kultur"],
+                morning: "Gemütliches letztes Frühstück mit frischen 'Bolo Lêvedo' Muffin-Broten in Ponta Delgada.",
+                afternoon: "Letzter Souvenir-Einkauf (Käse Queijo de São Miguel, Ananas-Likör, Gorreana-Tee). Kurze 10-Minuten-Fahrt zum Flughafen, Mietwagenabgabe und Rückflug.",
+                evening: "Ankunft daheim mit unvergesslichen Erinnerungen an die Azoren!",
+                tip: "Flüssige Souvenirs (Ananaslikör) nach der Sicherheitskontrolle im Duty Free kaufen!",
+                tags: ["Abreise", "Souvenirs", "Bolo Lêvedo", "Mietwagenabgabe"]
+            }
+        ];
+
+        // Packing List Dataset
+        const packingData = [
+            {
+                category: "flug",
+                title: "✈️ Das Flug-Outfit (Platzspartrick)",
+                desc: "Schwerste Sachen beim Flug anziehen, um Koffer-Volumen zu sparen!",
+                items: [
+                    { id: "f1", text: "Bequeme, lange Hose (leichte Wanderhose oder Jogger)" },
+                    { id: "f2", text: "T-Shirt & leichter Pullover / Hoodie" },
+                    { id: "f3", text: "Regenjacke / Windbreaker (Unverzichtbar!)" },
+                    { id: "f4", text: "Schwerste Schuhe (Trailrunning- oder Wanderschuhe)" }
+                ]
+            },
+            {
+                category: "kleidung",
+                title: "👕 Kleidung (Zwiebelprinzip)",
+                desc: "Rollen statt Falten spart Platz und Knitterfalten.",
+                items: [
+                    { id: "c1", text: "4-5 T-Shirts / Tops (atmungsaktiv für Sport)" },
+                    { id: "c2", text: "1 Langarmshirt (für kühle Tage/Abende)" },
+                    { id: "c3", text: "1 Fleecejacke / Midlayer (für Kraterseen)" },
+                    { id: "c4", text: "1-2 kurze Hosen / Shorts" },
+                    { id: "c5", text: "1 bequeme Alltagshose (Jeans/Chino für abends)" },
+                    { id: "c6", text: "1 Jogging-Outfit (auch zum Wandern nutzbar)" },
+                    { id: "c7", text: "7x Unterwäsche" },
+                    { id: "c8", text: "5-7 Paar Socken (darunter 2-3 Paar Wandersocken)" },
+                    { id: "c9", text: "Schlafzeug" }
+                ]
+            },
+            {
+                category: "badezeug",
+                title: "🩱 Badezeug (WICHTIG!)",
+                desc: "Spezielle Ausrüstung für die thermalen Quellen.",
+                items: [
+                    { id: "b1", text: "1x Alte, dunkle Badesachen (Für Terra Nostra & Caldeira Velha – Wasser färbt orange-braun!)" },
+                    { id: "b2", text: "1x Normale Badesachen (Für Santa Bárbara & Ferraria)" },
+                    { id: "b3", text: "1 kompaktes Mikrofaser-Handtuch (schnelltrocknend)" }
+                ]
+            },
+            {
+                category: "schuhe",
+                title: "👟 Schuhe",
+                desc: "Multifunktional für Wandern, Joggen & Strand.",
+                items: [
+                    { id: "s1", text: "Trailrunning-Schuhe / leichte Wanderschuhe (Beim Flug an)" },
+                    { id: "s2", text: "1 Paar bequeme Sneaker (für die Stadt)" },
+                    { id: "s3", text: "1 Paar Flip-Flops / Badeschuhe (für Ferraria & Thermen)" }
+                ]
+            },
+            {
+                category: "kultur",
+                title: "🧴 Kulturbeutel (100ml Limits)",
+                desc: "1-Liter-Zipbeutel Vorschriften beachten.",
+                items: [
+                    { id: "k1", text: "Zahnbürste & Zahnpasta (Reisegröße)" },
+                    { id: "k2", text: "Deo (Roll-on oder Stick)" },
+                    { id: "k3", text: "Duschgel & Shampoo (Tipp: Festes Shampoo zählt NICHT als Flüssigkeit!)" },
+                    { id: "k4", text: "Sonnencreme (Reisegröße)" },
+                    { id: "k5", text: "Gesichtscreme / Feuchtigkeitspflege" },
+                    { id: "k6", text: "Haarbürste / Kamm & Rasierer" },
+                    { id: "k7", text: "Reise-Apotheke: Ibuprofen, Blasenpflaster (Compeed), Reiseübelkeit-Tabletten" }
+                ]
+            },
+            {
+                category: "technik",
+                title: "📱 Technik, Ausrüstung & Dokumente",
+                desc: "Must-haves für Mietwagen & Orientierung.",
+                items: [
+                    { id: "t1", text: "Personalausweis & Führerschein" },
+                    { id: "t2", text: "Echte Kreditkarte (Zwingend für Mietwagen-Kaution!) & etwas Bargeld" },
+                    { id: "t3", text: "Smartphone & Ladekabel" },
+                    { id: "t4", text: "Powerbank (Wichtig für Wandern mit Handy-Navi)" },
+                    { id: "t5", text: "Leichter Tagesrucksack (40x30x25)" },
+                    { id: "t6", text: "Sonnenbrille & Kopfbedeckung (Cap)" },
+                    { id: "t7", text: "Wiederverwendbare Trinkflasche" },
+                    { id: "t8", text: "(Optional) Drybag für Wertsachen beim Baden" }
+                ]
+            }
+        ];
+
+        // Spots Dataset
+        const spotsData = [
+            {
+                title: "Sete Cidades",
+                region: "Westen",
+                drive: "30 Min",
+                type: "Kratersee & Wanderung",
+                desc: "Eines der 7 Naturwunder Portugals mit dem grünen und blauen See. Aussichtspunkt Boca do Inferno nicht verpassen!",
+                badge: "Top Highlight"
+            },
+            {
+                title: "Ponta da Ferraria",
+                region: "Westen",
+                drive: "35 Min",
+                type: "Ozean-Therme",
+                desc: "Baden im atlantischen Ozean, der durch eine unterirdische Vulkanquelle erwärmt wird. Gezeiten beachten!",
+                badge: "Einzigartig"
+            },
+            {
+                title: "Gorreana Teeplantage",
+                region: "Norden",
+                drive: "25 Min",
+                type: "Kultur & Wandern",
+                desc: "Älteste Teeplantage Europas mit wunderschönem Rundwanderweg durch sanfte grüne Teefelder.",
+                badge: "Gratis Tee"
+            },
+            {
+                title: "Praia de Santa Bárbara",
+                region: "Norden",
+                drive: "20 Min",
+                type: "Surf-Strand",
+                desc: "Langer schwarzer Sandstrand mit beeindruckender Brandung und genialer Strandbar.",
+                badge: "Strand-Favorit"
+            },
+            {
+                title: "Terra Nostra Park & Furnas",
+                region: "Osten",
+                drive: "40 Min",
+                type: "Botanischer Garten & Therme",
+                desc: "Riesiges 38°C Thermalbecken mitten im subtropischen Park. Dunkle Badesachen einpacken!",
+                badge: "Therme"
+            },
+            {
+                title: "Ilhéu de Vila Franca",
+                region: "Süden",
+                drive: "25 Min",
+                type: "Insel & Schnorcheln",
+                desc: "Kreisrunder Vulkankrater im Meer. Perfekt zum Schnorcheln. Vorab Online-Ticket buchen!",
+                badge: "Ticket-Pflicht"
+            },
+            {
+                title: "Janela do Inferno",
+                region: "Mitte",
+                drive: "20 Min",
+                type: "Abenteuer-Wanderung",
+                desc: "Rundweg durch alte Aquädukte, Dschungeltunnel und zu einem geheimnisvollen Wasserfall.",
+                badge: "Taschenlampe!"
+            },
+            {
+                title: "Caldeira Velha",
+                region: "Mitte",
+                drive: "22 Min",
+                type: "Dschungel-Therme",
+                desc: "Warmes Thermalwasserfall-Becken umgeben von riesigen Baumfarnen. Vorab Zeitslot buchen!",
+                badge: "Zeitslot-Pflicht"
+            }
+        ];
+
+        // State Management
+        let currentItineraryCategory = 'all';
+        let currentItineraryView = 'grid'; // 'grid' or 'timeline'
+        let currentPackingFilter = 'all';
+        let currentSpotRegion = 'all';
+        let packedItems = JSON.parse(localStorage.getItem('sao_miguel_packed_items') || '{}');
+
+        // Chart References
+        let hikeChartInstance = null;
+        let mixChartInstance = null;
+
+        // On DOM Loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            updateMainWeather('setecidades');
+            renderItinerary();
+            renderPackingList();
+            renderSpots();
+            initCharts();
+            updatePackingProgress();
+
+            // Mobile Menu
+            document.getElementById('mobileMenuToggle').addEventListener('click', () => {
+                const nav = document.getElementById('navContainer');
+                nav.classList.toggle('hidden');
+                nav.classList.toggle('flex');
+            });
+        });
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            if (window.innerWidth < 768) {
+                const nav = document.getElementById('navContainer');
+                nav.classList.add('hidden');
+                nav.classList.remove('flex');
+            }
+
+            if (tabId === 'dashboard') {
+                setTimeout(() => {
+                    if (hikeChartInstance) hikeChartInstance.resize();
+                    if (mixChartInstance) mixChartInstance.resize();
+                }, 100);
+            }
+        }
+
+        // Weather Radar Widget Switcher
+        function updateMainWeather(regionKey) {
+            const data = regionWeatherData[regionKey];
+            if (!data) return;
+
+            document.querySelectorAll('.weather-reg-btn').forEach(btn => {
+                btn.classList.remove('bg-emerald-600', 'text-white');
+                btn.classList.add('bg-white/10', 'text-gray-200');
+            });
+            const activeBtn = document.getElementById(`wbtn-${regionKey}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-emerald-600', 'text-white');
+                activeBtn.classList.remove('bg-white/10', 'text-gray-200');
+            }
+
+            const card = document.getElementById('mainWeatherCard');
+            card.innerHTML = `
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full ${data.badgeColor} animate-ping"></span>
+                        <h4 class="font-bold text-white text-base md:text-lg">${data.title}</h4>
+                    </div>
+                    <div class="text-xs text-emerald-200 font-medium">
+                        Wetter-Zustand: <span class="text-white font-bold">${data.cond}</span> • Temp: <span class="text-amber-300 font-bold">${data.temp}</span>
+                    </div>
+                    <div class="text-[11px] text-gray-300">
+                        Wind: ${data.wind} • UV-Index: ${data.uv} • Krater-Nebel-Risiko: <strong class="text-amber-200">${data.fogRisk}</strong>
+                    </div>
+                </div>
+
+                <div class="bg-black/30 p-3 rounded-xl border border-white/10 text-xs text-gray-200 md:max-w-xs shrink-0">
+                    <strong class="text-amber-300 block mb-0.5">💡 SpotAzores Empfehlung:</strong>
+                    ${data.recommendation}
+                </div>
+            `;
+        }
+
+        // Itinerary Rendering & View Handling
+        function setItineraryView(view) {
+            currentItineraryView = view;
+            const gridBtn = document.getElementById('viewBtnGrid');
+            const timeBtn = document.getElementById('viewBtnTimeline');
+
+            if (view === 'grid') {
+                gridBtn.className = "px-3 py-1.5 rounded-lg font-bold bg-azores-dark text-white";
+                timeBtn.className = "px-3 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100";
+            } else {
+                timeBtn.className = "px-3 py-1.5 rounded-lg font-bold bg-azores-dark text-white";
+                gridBtn.className = "px-3 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100";
+            }
+            renderItinerary();
+        }
+
+        function filterItineraryCategory(cat) {
+            currentItineraryCategory = cat;
+            document.querySelectorAll('#sec-itinerary .filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('bg-slate-100', 'text-slate-700');
+            });
+            event.target.classList.add('active');
+            event.target.classList.remove('bg-slate-100', 'text-slate-700');
+            renderItinerary();
+        }
+
+        function filterItinerary() {
+            renderItinerary();
+        }
+
+        function renderItinerary() {
+            const container = document.getElementById('itineraryContainer');
+            container.innerHTML = '';
+
+            const searchQuery = (document.getElementById('itinerarySearch')?.value || '').toLowerCase();
+
+            const filtered = itineraryData.filter(item => {
+                const matchesCat = (currentItineraryCategory === 'all') || item.category.includes(currentItineraryCategory);
+                const matchesSearch = !searchQuery || 
+                    item.title.toLowerCase().includes(searchQuery) ||
+                    item.region.toLowerCase().includes(searchQuery) ||
+                    item.morning.toLowerCase().includes(searchQuery) ||
+                    item.afternoon.toLowerCase().includes(searchQuery) ||
+                    item.tags.some(t => t.toLowerCase().includes(searchQuery));
+
+                return matchesCat && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                container.className = "col-span-full text-center py-12 bg-white rounded-2xl border border-azores-border";
+                container.innerHTML = `<p class="text-slate-500 font-medium text-sm">Keine Tages-Etappen für deine Suche gefunden.</p>`;
+                return;
+            }
+
+            if (currentItineraryView === 'grid') {
+                container.className = "grid grid-cols-1 md:grid-cols-2 gap-6";
+
+                filtered.forEach(item => {
+                    let effortColor = item.effort === 'hoch' ? 'bg-red-100 text-red-800 border-red-200' : (item.effort === 'mittel' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-green-100 text-green-800 border-green-200');
+
+                    const card = document.createElement('div');
+                    card.className = "bg-white rounded-2xl border border-azores-border shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition";
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex justify-between items-start mb-2 gap-2">
+                                <div>
+                                    <span class="text-xs font-bold text-azores-emerald uppercase tracking-wider">Tag ${item.day} • ${item.date}</span>
+                                    <h3 class="text-base font-bold text-azores-dark mt-0.5">${item.title}</h3>
+                                </div>
+                                <div class="flex flex-col items-end gap-1 shrink-0">
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${effortColor} capitalize">
+                                        ${item.effort}
+                                    </span>
+                                    <span class="text-[10px] bg-sky-50 text-sky-800 border border-sky-200 px-2 py-0.5 rounded-full font-medium">
+                                        ${item.weatherBadge}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-3 text-xs text-gray-500 mb-3 bg-azores-sand p-2.5 rounded-xl">
+                                <span>📍 <strong>Region:</strong> ${item.region}</span>
+                                <span>🚘 <strong>Fahrt:</strong> ${item.driveTime}</span>
+                            </div>
+
+                            <div class="space-y-2 text-xs md:text-sm text-slate-700">
+                                <p><strong class="text-azores-dark">🌅 Vormittag:</strong> ${item.morning}</p>
+                                <p><strong class="text-azores-dark">☀️ Nachmittag:</strong> ${item.afternoon}</p>
+                                <p><strong class="text-azores-dark">🌙 Abend:</strong> ${item.evening}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-slate-100">
+                            <div class="bg-emerald-50 text-emerald-950 p-2.5 rounded-xl text-xs font-medium mb-2.5 border border-emerald-100">
+                                💡 <strong>Tipp:</strong> ${item.tip}
+                            </div>
+                            <div class="flex flex-wrap gap-1">
+                                ${item.tags.map(tag => `<span class="bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md">${tag}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } else {
+                // Timeline View
+                container.className = "col-span-full space-y-4";
+
+                filtered.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = "bg-white p-4 rounded-2xl border border-azores-border shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4";
+                    row.innerHTML = `
+                        <div class="flex items-start gap-4 min-w-[220px]">
+                            <div class="w-12 h-12 rounded-2xl bg-azores-dark text-emerald-400 font-bold flex flex-col items-center justify-center text-xs shrink-0">
+                                <span>Tag</span>
+                                <span class="text-base leading-none">${item.day}</span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-gray-500">${item.date}</span>
+                                <h4 class="font-bold text-azores-dark text-sm">${item.title}</h4>
+                                <span class="text-[11px] text-azores-ocean font-medium">📍 ${item.region} (${item.driveTime})</span>
+                            </div>
+                        </div>
+
+                        <div class="text-xs text-slate-700 space-y-1 flex-grow">
+                            <p><strong>Highlights:</strong> ${item.morning.substring(0, 90)}...</p>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-bold">${item.weatherBadge}</span>
+                                <span class="text-[10px] text-gray-500 font-semibold">🥾 Wandern: ${item.hikeKm} km</span>
+                            </div>
+                        </div>
+
+                        <div class="shrink-0 text-right">
+                            <span class="text-xs font-bold text-azores-terracotta bg-orange-50 px-3 py-1 rounded-xl border border-orange-100">
+                                ${item.tags[0]}
+                            </span>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+            }
+        }
+
+        // Packing List Logic
+        function filterPacking(cat) {
+            currentPackingFilter = cat;
+            document.querySelectorAll('.pack-filter-btn').forEach(btn => {
+                btn.classList.remove('bg-azores-dark', 'text-white', 'font-bold');
+                btn.classList.add('bg-slate-100', 'text-slate-700');
+            });
+            event.target.classList.add('bg-azores-dark', 'text-white', 'font-bold');
+            event.target.classList.remove('bg-slate-100', 'text-slate-700');
+            renderPackingList();
+        }
+
+        function renderPackingList() {
+            const container = document.getElementById('packingListContainer');
+            container.innerHTML = '';
+
+            const searchQuery = (document.getElementById('packSearch')?.value || '').toLowerCase();
+
+            const filtered = packingData.filter(cat => {
+                if (currentPackingFilter !== 'all' && cat.category !== currentPackingFilter) return false;
+                return true;
+            });
+
+            filtered.forEach(cat => {
+                const matchingItems = cat.items.filter(item => !searchQuery || item.text.toLowerCase().includes(searchQuery));
+
+                if (matchingItems.length === 0) return;
+
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl border border-azores-border shadow-sm p-5 flex flex-col justify-between";
+
+                let itemsHTML = matchingItems.map(item => {
+                    const isChecked = packedItems[item.id] ? 'checked' : '';
+                    const textStyle = packedItems[item.id] ? 'line-through text-gray-400 font-normal' : 'text-slate-800 font-medium';
+
+                    return `
+                        <label class="flex items-start gap-2.5 py-1.5 cursor-pointer hover:bg-slate-50 rounded-lg px-1 transition text-xs md:text-sm select-none">
+                            <input type="checkbox" onchange="togglePackItem('${item.id}')" ${isChecked} class="mt-0.5 h-4 w-4 rounded border-gray-300 text-azores-emerald focus:ring-emerald-500">
+                            <span class="${textStyle}">${item.text}</span>
+                        </label>
+                    `;
+                }).join('');
+
+                card.innerHTML = `
+                    <div>
+                        <h3 class="font-bold text-azores-dark text-sm md:text-base border-b border-slate-100 pb-2 mb-1">${cat.title}</h3>
+                        <p class="text-xs text-gray-500 mb-3">${cat.desc}</p>
+                        <div class="space-y-1">
+                            ${itemsHTML}
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function togglePackItem(id) {
+            packedItems[id] = !packedItems[id];
+            localStorage.setItem('sao_miguel_packed_items', JSON.stringify(packedItems));
+            renderPackingList();
+            updatePackingProgress();
+        }
+
+        function updatePackingProgress() {
+            let total = 0;
+            let packed = 0;
+
+            packingData.forEach(cat => {
+                cat.items.forEach(item => {
+                    total++;
+                    if (packedItems[item.id]) packed++;
+                });
+            });
+
+            const percentage = total > 0 ? Math.round((packed / total) * 100) : 0;
+
+            document.getElementById('packingProgressBar').style.width = `${percentage}%`;
+            document.getElementById('packBadge').innerText = `${percentage}%`;
+            document.getElementById('packStatusText').innerText = `${packed} von ${total} Gegenständen gepackt`;
+            document.getElementById('packPercentText').innerText = `${percentage}% bereit`;
+        }
+
+        function resetPackingList() {
+            if (confirm("Möchtest du wirklich alle Abhakungen auf der Packliste zurücksetzen?")) {
+                packedItems = {};
+                localStorage.removeItem('sao_miguel_packed_items');
+                renderPackingList();
+                updatePackingProgress();
+            }
+        }
+
+        // Spot Finder Logic
+        function filterSpotRegion(region) {
+            currentSpotRegion = region;
+            document.querySelectorAll('.spot-reg-btn').forEach(btn => {
+                btn.classList.remove('bg-azores-ocean', 'text-white');
+                btn.classList.add('bg-slate-100', 'text-slate-700');
+            });
+            event.target.classList.add('bg-azores-ocean', 'text-white');
+            event.target.classList.remove('bg-slate-100', 'text-slate-700');
+            renderSpots();
+        }
+
+        function renderSpots() {
+            const container = document.getElementById('spotsGrid');
+            container.innerHTML = '';
+
+            const searchQuery = (document.getElementById('spotSearch')?.value || '').toLowerCase();
+
+            const filtered = spotsData.filter(spot => {
+                const matchesReg = (currentSpotRegion === 'all') || (spot.region === currentSpotRegion);
+                const matchesQuery = !searchQuery || 
+                    spot.title.toLowerCase().includes(searchQuery) ||
+                    spot.desc.toLowerCase().includes(searchQuery) ||
+                    spot.type.toLowerCase().includes(searchQuery);
+
+                return matchesReg && matchesQuery;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 text-sm">Keine Spots gefunden.</div>`;
+                return;
+            }
+
+            filtered.forEach(spot => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-5 rounded-2xl border border-azores-border shadow-sm flex flex-col justify-between hover:border-azores-ocean transition";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-2 gap-2">
+                            <h3 class="font-bold text-azores-dark text-base">${spot.title}</h3>
+                            <span class="bg-sky-100 text-sky-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0">
+                                ${spot.badge}
+                            </span>
+                        </div>
+                        <div class="text-xs text-slate-500 mb-2 font-medium">
+                            📍 Region: ${spot.region} • 🚘 ${spot.drive} ab Fajã de Cima
+                        </div>
+                        <p class="text-xs md:text-sm text-slate-700 mb-3">${spot.desc}</p>
+                    </div>
+                    <div class="text-xs font-semibold text-azores-ocean bg-sky-50 p-2.5 rounded-xl border border-sky-100">
+                        Kategorie: ${spot.type}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // SpotAzores Weather Simulator
+        function setSimulatedWeather(type) {
+            const box = document.getElementById('simulatedWebcamBox');
+            const content = document.getElementById('simViewContent');
+            const btnSun = document.getElementById('btnSimSunny');
+            const btnFog = document.getElementById('btnSimFoggy');
+
+            if (type === 'sunny') {
+                box.className = "relative rounded-2xl overflow-hidden border border-slate-300 bg-gradient-to-r from-teal-700 via-emerald-600 to-sky-700 text-white p-6 flex flex-col justify-end min-h-[220px] transition-all duration-500 shadow-inner";
+                content.innerHTML = `
+                    <h4 class="text-lg font-bold text-yellow-300">☀️ Klare Sicht am Kratersee!</h4>
+                    <p class="text-xs text-gray-100 mt-1">Sonne pur! Perfekte Bedingungen für die Wandertouren am Sete Cidades oder Lagoa do Fogo. Sofort starten!</p>
+                `;
+                btnSun.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-sm";
+                btnFog.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300";
+            } else {
+                box.className = "relative rounded-2xl overflow-hidden border border-slate-300 bg-slate-600 text-gray-200 p-6 flex flex-col justify-end min-h-[220px] transition-all duration-500 shadow-inner";
+                content.innerHTML = `
+                    <h4 class="text-lg font-bold text-gray-200">🌫️ Dichter Nebel / Wolken am Krater</h4>
+                    <p class="text-xs text-gray-300 mt-1">Achtung: Der See ist komplett vernebelt! Plan-B wählen: Besser heute die Teefelder an der Küste besuchen oder in die Thermen gehen.</p>
+                `;
+                btnFog.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-white shadow-sm";
+                btnSun.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300";
+            }
+        }
+
+        // Chart.js Implementations
+        function initCharts() {
+            // Chart 1: Hike Distances
+            const hikeCtx = document.getElementById('hikeDistanceChart').getContext('2d');
+            hikeChartInstance = new Chart(hikeCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4', 'Tag 5', 'Tag 6', 'Tag 7', 'Tag 8'],
+                    datasets: [{
+                        label: 'Wanderstrecke (km)',
+                        data: [2, 12, 5, 9, 3, 7.6, 4, 1],
+                        backgroundColor: '#16a34a',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Distanz: ${context.parsed.y} km`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Kilometer (km)', font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Activity Mix
+            const mixCtx = document.getElementById('activityMixChart').getContext('2d');
+            mixChartInstance = new Chart(mixCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Wandern & Natur', 'Strand & Ozean', 'Thermen & Wellness', 'Kultur & Gastronomie'],
+                    datasets: [{
+                        data: [35, 25, 20, 20],
+                        backgroundColor: ['#16a34a', '#028090', '#c85a32', '#f59e0b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 12, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
